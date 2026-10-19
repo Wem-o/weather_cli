@@ -1,7 +1,7 @@
 ﻿// WEATHER CLI: A CLI weather app
 
 // Commands:
-//  location set / get      Set or get the location
+//  location set / get      Set or get (default) the location
 //  report                  Get a generic weather report
 
 namespace weather_cli {
@@ -23,7 +23,7 @@ namespace weather_cli {
     /// Stores the arguments passed in by the cli interface
     class Arguments {
         public readonly CommandType command_type;
-        public readonly List<String>? arguments;
+        public readonly List<String> arguments = [];
 
         public bool ShouldQuit() {
             return this.command_type == CommandType.Quit;
@@ -42,32 +42,27 @@ namespace weather_cli {
             );
             else this.command_type = a.Value;
 
-            this.arguments = args.Skip(1).Take(args.Count() - 2).ToList();
-        }
-    }
-
-    class State {
-        public State() { }
-
-        public void Execute(ref Arguments args) {
-            // Console.WriteLine($"Executing: {args.command_type}");
-            if (args.ShouldQuit()) throw new Exception("The code is ass");
-
-            switch (args.command_type) {
-                case CommandType.Help:
-                    this.Help();
-                    break;
-                default:
-                    break;
+            if (args.Count() > 1) {
+                this.arguments = [.. args[1 .. args.Count()]];
             }
-        }
-
-        void Help() {
-            Console.WriteLine("Ugh, idk...");
         }
     }
 
     static class Program {
+        public static CommandType? TryParse(ref string first_arg) {
+            return first_arg switch {
+                "location" => CommandType.Location,
+                "report" => CommandType.Report,
+                "help" => CommandType.Help,
+                "h" => CommandType.Help,
+                "q" => CommandType.Quit,
+                "quit" => CommandType.Quit,
+                "exit" => CommandType.Quit,
+                "bye" => CommandType.Quit,
+                _ => null,
+            };
+        }
+
         static void Main() {
             Console.Clear();
             Console.WriteLine("==== WEATHER CLI ====");
@@ -89,24 +84,15 @@ namespace weather_cli {
                     Console.WriteLine(e.Message);
                     continue;
                 }
-                if (args.ShouldQuit()) should_exit = true;
+                if (args.ShouldQuit()) {
+                    should_exit = true;
+                    continue;
+                }
 
-                state.Execute(ref args);
+                state.Execute(args);
             }
 
             Console.WriteLine("Bye.....");
-        }
-
-        public static CommandType? TryParse(ref string first_arg) {
-            return first_arg switch {
-                "location" => CommandType.Location,
-                "report" => CommandType.Report,
-                "help" => CommandType.Help,
-                "h" => CommandType.Help,
-                "q" => CommandType.Quit,
-                "quit" => CommandType.Quit,
-                _ => null,
-            };
         }
     }
 }
