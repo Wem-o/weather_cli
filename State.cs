@@ -89,8 +89,12 @@ namespace weather_cli {
             string? country = results?["country"]?.ToString();
             string? country_code = results?["country_code"]?.ToString();
             string? admin = results?["admin1"]?.ToString();
+            float? lat = (float?)results?["latitude"];
+            float? lng = (float?)results?["longitude"];
 
-            if (name is null || country is null || country_code is null) {
+            if (name is null || country is null
+                || country_code is null || lat is null || lng is null
+            ) {
                 Console.WriteLine("Not a valid location!");
                 return null;
             }
@@ -99,7 +103,9 @@ namespace weather_cli {
                 name,
                 country,
                 country_code,
-                admin
+                admin,
+                lat ?? 0,
+                lng ?? 0
             );
         }
     }
