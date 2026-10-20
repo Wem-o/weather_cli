@@ -10,6 +10,9 @@ namespace weather_cli {
 
         Location? location = null;
 
+        List<WeatherData>? hourly = null;
+        List<WeatherData>? daily = null;
+
         public State() { }
 
         public void Execute(in Arguments args) {
@@ -31,8 +34,8 @@ namespace weather_cli {
         void Help() {
             Console.WriteLine("Help:\n");
             Console.WriteLine("\thelp\t\t\tPrint this message");
-            Console.WriteLine("\tlocation [set|get]\t\tSet or get the location");
-            Console.WriteLine("\treport\t\t\tPrints a generic weather report");
+            Console.WriteLine("\tlocation [set <CITY>|get]\t\tSet or print the tracked location");
+            Console.WriteLine("\treport\t\t\tPrints a general weather report for today");
         }
 
         void Location(in List<String> args) {
