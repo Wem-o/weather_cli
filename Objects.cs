@@ -5,7 +5,8 @@ namespace weather_cli {
         in string country_code,
         in string? admin,
         float lat,
-        float lng
+        float lng,
+        string tz
         ) {
         readonly string name = name;
         readonly string country = country;
@@ -13,9 +14,10 @@ namespace weather_cli {
         readonly string? admin = admin;
         readonly float lat = lat;
         readonly float lng = lng;
+        readonly string tz = tz;
 
         public string Format() {
-            return $"{name}, {country} ({country_code}) {(admin is not null ? admin : "")}";
+            return $"{name}, {(admin is not null ? admin + "," : "")} {country} ({country_code}), Timezone: {tz}";
         }
     }
 }

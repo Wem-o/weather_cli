@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 
 namespace weather_cli {
     class State {
-        private static HttpClient http_geo = new() {
+        private static readonly HttpClient http_geo = new() {
             BaseAddress = new Uri("https://geocoding-api.open-meteo.com"),
         };
 
@@ -91,8 +91,9 @@ namespace weather_cli {
             string? admin = results?["admin1"]?.ToString();
             float? lat = (float?)results?["latitude"];
             float? lng = (float?)results?["longitude"];
+            string? tz = results?["timezone"]?.ToString();
 
-            if (name is null || country is null
+            if (name is null || country is null || tz is null
                 || country_code is null || lat is null || lng is null
             ) {
                 Console.WriteLine("Not a valid location!");
@@ -105,7 +106,8 @@ namespace weather_cli {
                 country_code,
                 admin,
                 lat ?? 0,
-                lng ?? 0
+                lng ?? 0,
+                tz
             );
         }
     }
