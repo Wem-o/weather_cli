@@ -8,6 +8,10 @@ namespace weather_cli {
             BaseAddress = new Uri("https://geocoding-api.open-meteo.com"),
         };
 
+        private static readonly HttpClient http_weather = new() {
+            BaseAddress = new Uri("https://api.open-meteo.com"),
+        };
+
         Location? location = null;
 
         List<WeatherData>? hourly = null;
@@ -25,6 +29,9 @@ namespace weather_cli {
                     break;
                 case CommandType.Location:
                     this.Location(args.arguments);
+                    break;
+                case CommandType.Report:
+                    this.Report();
                     break;
                 default:
                     break;
@@ -69,9 +76,78 @@ namespace weather_cli {
             }
         }
 
+        void Report() {
+            JsonNode? json = GetReport(["sunrise", "sunset"], 1, ["temperature_2m"]);
+
+            if (json is null) {
+                Console.WriteLine("Failed to parse response");
+                return;
+            }
+
+            // Console.WriteLine(json);
+
+            int offset = (int)json["utc_offset_seconds"]!;
+            Console.WriteLine(offset);
+
+            JsonNode daily = json["daily"]!;
+            Console.WriteLine(daily);
+            int sunrise = (int)daily["sunrise"]![0]!;
+            int sunset = (int)daily["sunset"]![0]!;
+
+            TimeSpan utc_offset = new(0, 0, offset);
+
+            // sunrise
+            DateTime sunrise_utc = DateTime.UnixEpoch;
+            sunrise_utc.AddSeconds(sunrise);
+            DateTimeOffset sunrise_mewo = new(sunrise_utc, utc_offset);
+            Console.WriteLine(sunrise_mewo);
+        }
+
+        JsonNode? GetReport(
+            List<String>? daily = null,
+            ushort forecast_days = 0,
+            List<String>? hourly = null,
+            List<String>? minutely = null,
+            uint forecast_minutely_count = 0
+        ) {
+            if (this.location is null) {
+                throw new Exception("Tried to GetReport with no location!");
+            }
+
+            // https://www.open-meteo.com/en/docs
+            string request_url =
+            $"v1/forecast?latitude={this.location.lat}&longitude={this.location.lng}&timezone=auto&timeformat=unixtime";
+            request_url += $"&forecast_minutely_15={forecast_minutely_count}&forecast_days={forecast_days}";
+
+            if (daily is not null) {
+                request_url += $"&daily={String.Join(",", daily)}";
+            }
+
+            if (hourly is not null) {
+                request_url += $"&hourly={String.Join(",", hourly)}";
+            }
+
+            if (minutely is not null) {
+                request_url += $"&minutely_15={String.Join(",", minutely)}";
+            }
+            // Console.WriteLine(request_url);
+
+            HttpResponseMessage response = http_weather.Send(
+                new HttpRequestMessage(HttpMethod.Get, request_url)
+            );
+
+            if (response.StatusCode != System.Net.HttpStatusCode.OK) {
+                Console.WriteLine("Failed to make api call to api.open-meteo.com");
+                return null;
+            }
+
+            using Stream body = response.Content.ReadAsStream();
+            return JsonNode.Parse(body);
+        }
+
         Location? GetLocation(string location) {
             // Docs at:
-            // open-meteo.com/en/docs/geocoding-api
+            // open-meteo.com/en/docs/geocoding-apithis
             string request_url = $"v1/search?name={location}&count=1&";
             HttpResponseMessage response = http_geo.Send(
                 new HttpRequestMessage(HttpMethod.Get, request_url)

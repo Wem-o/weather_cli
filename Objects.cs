@@ -1,5 +1,5 @@
 namespace weather_cli {
-    /// Stores a weather data at one specific time peroid
+    /// Represents weather at a given time
     class WeatherData {
         public readonly DateTimeOffset time;
         public readonly float temp;
