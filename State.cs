@@ -97,10 +97,11 @@ namespace weather_cli {
             TimeSpan utc_offset = new(0, 0, offset);
 
             // sunrise
-            DateTime sunrise_utc = DateTime.UnixEpoch;
-            sunrise_utc.AddSeconds(sunrise);
-            DateTimeOffset sunrise_mewo = new(sunrise_utc, utc_offset);
-            Console.WriteLine(sunrise_mewo);
+            DateTimeOffset sunrise_datetime = DateTimeOffset
+                .FromUnixTimeSeconds(sunrise)
+                .ToOffset(utc_offset);
+
+            Console.WriteLine(sunrise_datetime.ToString());
         }
 
         JsonNode? GetReport(

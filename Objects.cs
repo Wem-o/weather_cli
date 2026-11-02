@@ -28,14 +28,10 @@ namespace weather_cli {
             float precipitation,
             ushort precipitation_prob
         ) {
-            // You're telling me datetimeoffset has a fromunix
-            // constructor but you CANNOT SET THE OFFSET THERE!!
-            // This language is a work of art...
-            DateTime utc_time = DateTime.UnixEpoch;
-            utc_time.AddSeconds(unix_timestamp);
-
             TimeSpan utc_offset = new(0, 0, utc_second_offset);
-            this.time = new DateTimeOffset(utc_time, utc_offset);
+            this.time = DateTimeOffset
+                .FromUnixTimeSeconds(unix_timestamp)
+                .ToOffset(utc_offset);
 
             this.temp = temp;
             this.atemp = atemp;
@@ -63,18 +59,18 @@ namespace weather_cli {
             long sunrise_unix_timestamp,
             long sunset_unix_timestamp
         ) {
-            // You're telling me datetimeoffset has a fromunix
-            // constructor but you CANNOT SET THE OFFSET THERE!!
-            // This language is a work of art...
-            DateTime utc_time = DateTime.UnixEpoch;
-            utc_time.AddSeconds(unix_timestamp);
-
             TimeSpan utc_offset = new(0, 0, utc_second_offset);
 
-            this.time = new DateTimeOffset(utc_time, utc_offset);
+            this.time = DateTimeOffset
+                .FromUnixTimeSeconds(unix_timestamp)
+                .ToOffset(utc_offset);
 
-            this.sunrise = new DateTimeOffset(sunrise_unix_timestamp, utc_offset);
-            this.sunset = new DateTimeOffset(sunset_unix_timestamp, utc_offset);
+            this.sunrise = DateTimeOffset
+                .FromUnixTimeSeconds(sunrise_unix_timestamp)
+                .ToOffset(utc_offset);
+            this.sunset = DateTimeOffset
+                .FromUnixTimeSeconds(sunset_unix_timestamp)
+                .ToOffset(utc_offset);
 
             this.temp = temp;
             this.atemp = atemp;
