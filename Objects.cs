@@ -1,6 +1,15 @@
 namespace weather_cli {
+    /// Represents what kind of weather a WeatherData object represents
+    enum WeatherKind {
+        Current,
+        Daily,
+        Hourly
+    }
+
     /// Represents weather at a given time
     class WeatherData {
+        public readonly WeatherKind kind;
+
         public readonly DateTimeOffset time;
         public readonly float temp;
         public readonly float atemp;
@@ -17,6 +26,7 @@ namespace weather_cli {
         public readonly DateTimeOffset? sunset = null;
 
         public WeatherData(
+            WeatherKind kind,
             long unix_timestamp,
             int utc_second_offset,
             float temp,
@@ -28,6 +38,8 @@ namespace weather_cli {
             float precipitation,
             ushort precipitation_prob
         ) {
+            this.kind = kind;
+
             TimeSpan utc_offset = new(0, 0, utc_second_offset);
             this.time = DateTimeOffset
                 .FromUnixTimeSeconds(unix_timestamp)
@@ -46,6 +58,7 @@ namespace weather_cli {
         }
 
         public WeatherData(
+            WeatherKind kind,
             long unix_timestamp,
             int utc_second_offset,
             float temp,
@@ -59,6 +72,8 @@ namespace weather_cli {
             long sunrise_unix_timestamp,
             long sunset_unix_timestamp
         ) {
+            this.kind = kind;
+
             TimeSpan utc_offset = new(0, 0, utc_second_offset);
 
             this.time = DateTimeOffset

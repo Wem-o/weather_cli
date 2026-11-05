@@ -16,6 +16,7 @@ namespace weather_cli {
 
         List<WeatherData>? hourly = null;
         List<WeatherData>? daily = null;
+        WeatherData? current = null;
 
         public State() { }
 
@@ -77,34 +78,40 @@ namespace weather_cli {
         }
 
         void Report() {
-            JsonNode? json = GetReport(["sunrise", "sunset"], 1, ["temperature_2m"]);
+            Console.WriteLine(ReportCurrent());
 
-            if (json is null) {
-                Console.WriteLine("Failed to parse response");
-                return;
-            }
+        }
 
-            // Console.WriteLine(json);
+        WeatherData? ReportCurrent() {
+            JsonNode? json = GetReport(current: [
+                "temperature_2m",
+                "apparent_temperature",
+                "relative_humidity_2m",
+                "weather_code",
+                "is_day",
+                "precipitation"
+            ]);
+            if (json is null) return null;
 
-            int offset = (int)json["utc_offset_seconds"]!;
-            Console.WriteLine(offset);
+            JsonNode current = json["current"]!;
 
-            JsonNode daily = json["daily"]!;
-            Console.WriteLine(daily);
-            int sunrise = (int)daily["sunrise"]![0]!;
-            int sunset = (int)daily["sunset"]![0]!;
-
-            TimeSpan utc_offset = new(0, 0, offset);
-
-            // sunrise
-            DateTimeOffset sunrise_datetime = DateTimeOffset
-                .FromUnixTimeSeconds(sunrise)
-                .ToOffset(utc_offset);
-
-            Console.WriteLine(sunrise_datetime.ToString());
+            return new WeatherData(
+                WeatherKind.Current,
+                (long)current["time"]!,
+                (int)json["utc_offset_seconds"]!,
+                (float)current["temperature_2m"]!,
+                (float)current["apparent_temperature"]!,
+                (ushort)current["relative_humidity_2m"]!,
+                (ushort)current["weather_code"]!,
+                (int)-1,
+                (int)current["is_day"]! != 0,
+                (float)current["precipitation"]!,
+                (ushort)100
+            );
         }
 
         JsonNode? GetReport(
+            List<String>? current = null,
             List<String>? daily = null,
             ushort forecast_days = 0,
             List<String>? hourly = null,
@@ -119,6 +126,10 @@ namespace weather_cli {
             string request_url =
             $"v1/forecast?latitude={this.location.lat}&longitude={this.location.lng}&timezone=auto&timeformat=unixtime";
             request_url += $"&forecast_minutely_15={forecast_minutely_count}&forecast_days={forecast_days}";
+
+            if (current is not null) {
+                request_url += $"&current={String.Join(",", current)}";
+            }
 
             if (daily is not null) {
                 request_url += $"&daily={String.Join(",", daily)}";
