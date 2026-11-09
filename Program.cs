@@ -89,7 +89,11 @@ namespace weather_cli {
                     continue;
                 }
 
-                state.Execute(args);
+                try {
+                    state.Execute(args);
+                } catch (InvalidCommand e) {
+                    Console.WriteLine($"Failed to execute command: {e.Message}");
+                }
             }
 
             Console.WriteLine("Bye.....");
