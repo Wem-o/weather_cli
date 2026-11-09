@@ -78,18 +78,24 @@ namespace weather_cli {
         }
 
         void Report() {
-            Console.WriteLine(ReportCurrent());
+            this.current = GetCurrentReport();
+            if (this.current is null) {
+                Console.WriteLine("Failed to get current weather!");
+            }
 
+            Console.WriteLine(current!.Format());
         }
 
-        WeatherData? ReportCurrent() {
+        WeatherData? GetCurrentReport() {
             JsonNode? json = GetReport(current: [
                 "temperature_2m",
                 "apparent_temperature",
                 "relative_humidity_2m",
                 "weather_code",
                 "is_day",
-                "precipitation"
+                "precipitation",
+                "wind_direction_10m",
+                "wind_speed_10m"
             ]);
             if (json is null) return null;
 
@@ -106,7 +112,12 @@ namespace weather_cli {
                 (int)-1,
                 (int)current["is_day"]! != 0,
                 (float)current["precipitation"]!,
-                (ushort)100
+                (ushort)100,
+                (float)current["wind_speed_10m"]!,
+                (float)current["wind_direction_10m"]!,
+                ((string)json["current_units"]!["temperature_2m"]!)[1],
+                (string)json["current_units"]!["precipitation"]!,
+                (string)json["current_units"]!["wind_speed_10m"]!
             );
         }
 
