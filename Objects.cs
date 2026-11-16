@@ -2,6 +2,7 @@ namespace weather_cli {
     /// Represents what kind of weather a WeatherData object represents
     enum WeatherKind {
         Current,
+        Minutely,
         Daily,
         Hourly
     }
@@ -17,6 +18,16 @@ namespace weather_cli {
             else if (angle > 292.5 && angle <= 337.5) return "NW";
             else return "N";
         }
+
+        public static string FormatIso8601(DateTimeOffset dto)
+        {
+            string format = dto.Offset == TimeSpan.Zero
+                ? "yyyy-MM-ddTHH:mm:ss.fffZ"
+                : "yyyy-MM-ddTHH:mm:ss.fffzzz";
+
+            return dto.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
     }
 
     /// Represents weather at a given time

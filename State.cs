@@ -78,6 +78,7 @@ namespace weather_cli {
         }
 
         void Report() {
+            // Current
             this.current = GetCurrentReport();
             if (this.current is null) {
                 Console.WriteLine("Failed to get current weather!");
@@ -121,13 +122,60 @@ namespace weather_cli {
             );
         }
 
+        List<WeatherData>? GetMinutelyReport(int count = 3) {
+            if (count < 1) throw new Exception("Get minutey report got a count less than 1");
+
+            JsonNode? json = GetReport(
+                forecast_minutely_count: (uint)count,
+                minutely: [
+                "temperature_2m",
+                "apparent_temperature",
+                "relative_humidity_2m",
+                "weather_code",
+                "is_day",
+                "precipitation",
+                "precipitation_probability",
+                "wind_direction_10m",
+                "wind_speed_10m",
+                "visibility"
+            ]);
+            if (json is null) return null;
+
+            JsonNode minutely = json["minutely_15"]!;
+
+            var data = new List<WeatherData>(capacity: count);
+            for (int i = 0; i < count; i++) {
+                data.Add(new WeatherData(
+                    WeatherKind.Minutely,
+                    (long)minutely["time"]![i]!,
+                    (int)json["utc_offset_seconds"]!,
+                    (float)minutely["temperature_2m"]![i]!,
+                    (float)minutely["apparent_temperature"]![i]!,
+                    (ushort)minutely["relative_humidity_2m"]![i]!,
+                    (ushort)minutely["weather_code"]![i]!,
+                    (int)minutely["visibility"]![i]!,
+                    (int)minutely["is_day"]![i]! != 0,
+                    (float)minutely["precipitation"]![i]!,
+                    (ushort)minutely["precipitation_probability"]![i]!,
+                    (float)minutely["wind_speed_10m"]!,
+                    (float)minutely["wind_direction_10m"]!,
+                    ((string)json["minutely_15_units"]!["temperature_2m"]!)[1],
+                    (string)json["minutely_15_units"]!["precipitation"]!,
+                    (string)json["minutely_15_units"]!["wind_speed_10m"]!
+                ));
+            }
+
+            return data;
+        }
+
         JsonNode? GetReport(
             List<String>? current = null,
             List<String>? daily = null,
             ushort forecast_days = 0,
             List<String>? hourly = null,
             List<String>? minutely = null,
-            uint forecast_minutely_count = 0
+            uint forecast_minutely_count = 0,
+            bool should_minutely_start_from_current_time = true
         ) {
             if (this.location is null) {
                 throw new Exception("Tried to GetReport with no location!");
@@ -151,6 +199,14 @@ namespace weather_cli {
             }
 
             if (minutely is not null) {
+                if (should_minutely_start_from_current_time) {
+                    var current_time = DateTimeOffset.Now;
+                    // Round to the nearest 15 min
+                    current_time = current_time.AddMinutes(-(current_time.Minute % 15));
+
+                    request_url += $"&start_minutely_15=${Utils.FormatIso8601(current_time)}";
+                }
+
                 request_url += $"&minutely_15={String.Join(",", minutely)}";
             }
             // Console.WriteLine(request_url);
@@ -159,8 +215,11 @@ namespace weather_cli {
                 new HttpRequestMessage(HttpMethod.Get, request_url)
             );
 
-            if (response.StatusCode != System.Net.HttpStatusCode.OK) {
-                Console.WriteLine("Failed to make api call to api.open-meteo.com");
+            // Completely real branch of code that could happen
+            if ((int)response.StatusCode == 418) {
+                Console.WriteLine("The server was unable to brew coffe as it's a teapot. Try again later");
+            } else if (response.StatusCode != System.Net.HttpStatusCode.OK) {
+                Console.WriteLine($"Failed to make api request: api.open-meteo.com returned ${(int)response.StatusCode}: ${response.StatusCode.ToString()}");
                 return null;
             }
 
