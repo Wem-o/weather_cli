@@ -16,6 +16,7 @@ namespace weather_cli {
 
         List<WeatherData>? hourly = null;
         List<WeatherData>? daily = null;
+        List<WeatherData>? minutely = null;
         WeatherData? current = null;
 
         public State() { }
@@ -78,17 +79,7 @@ namespace weather_cli {
         }
 
         void Report() {
-            // Current
-            this.current = GetCurrentReport();
-            if (this.current is null) {
-                Console.WriteLine("Failed to get current weather!");
-            }
-
-            Console.WriteLine(current!.Format());
-        }
-
-        WeatherData? GetCurrentReport() {
-            JsonNode? json = GetReport(current: [
+            JsonNode? json = MakeMeteoCall(current: [
                 "temperature_2m",
                 "apparent_temperature",
                 "relative_humidity_2m",
@@ -97,36 +88,8 @@ namespace weather_cli {
                 "precipitation",
                 "wind_direction_10m",
                 "wind_speed_10m"
-            ]);
-            if (json is null) return null;
-
-            JsonNode current = json["current"]!;
-
-            return new WeatherData(
-                WeatherKind.Current,
-                (long)current["time"]!,
-                (int)json["utc_offset_seconds"]!,
-                (float)current["temperature_2m"]!,
-                (float)current["apparent_temperature"]!,
-                (ushort)current["relative_humidity_2m"]!,
-                (ushort)current["weather_code"]!,
-                (int)-1,
-                (int)current["is_day"]! != 0,
-                (float)current["precipitation"]!,
-                (ushort)100,
-                (float)current["wind_speed_10m"]!,
-                (float)current["wind_direction_10m"]!,
-                ((string)json["current_units"]!["temperature_2m"]!)[1],
-                (string)json["current_units"]!["precipitation"]!,
-                (string)json["current_units"]!["wind_speed_10m"]!
-            );
-        }
-
-        List<WeatherData>? GetMinutelyReport(int count = 3) {
-            if (count < 1) throw new Exception("Get minutey report got a count less than 1");
-
-            JsonNode? json = GetReport(
-                forecast_minutely_count: (uint)count,
+                ],
+                forecast_minutely_count: 3,
                 minutely: [
                 "temperature_2m",
                 "apparent_temperature",
@@ -139,36 +102,87 @@ namespace weather_cli {
                 "wind_speed_10m",
                 "visibility"
             ]);
-            if (json is null) return null;
 
-            JsonNode minutely = json["minutely_15"]!;
+            if (json is null) return;
 
-            var data = new List<WeatherData>(capacity: count);
-            for (int i = 0; i < count; i++) {
-                data.Add(new WeatherData(
-                    WeatherKind.Minutely,
-                    (long)minutely["time"]![i]!,
-                    (int)json["utc_offset_seconds"]!,
-                    (float)minutely["temperature_2m"]![i]!,
-                    (float)minutely["apparent_temperature"]![i]!,
-                    (ushort)minutely["relative_humidity_2m"]![i]!,
-                    (ushort)minutely["weather_code"]![i]!,
-                    (int)minutely["visibility"]![i]!,
-                    (int)minutely["is_day"]![i]! != 0,
-                    (float)minutely["precipitation"]![i]!,
-                    (ushort)minutely["precipitation_probability"]![i]!,
-                    (float)minutely["wind_speed_10m"]!,
-                    (float)minutely["wind_direction_10m"]!,
-                    ((string)json["minutely_15_units"]!["temperature_2m"]!)[1],
-                    (string)json["minutely_15_units"]!["precipitation"]!,
-                    (string)json["minutely_15_units"]!["wind_speed_10m"]!
-                ));
+            if (!ParseCall(json)) {
+                Console.WriteLine("Failed to get report!");
+                return;
             }
 
-            return data;
+            Console.WriteLine(this.current!.Format());
         }
 
-        JsonNode? GetReport(
+        bool ParseCall(in JsonNode node) {
+            if (node["error"] is not null && (bool)node["error"]! == true) {
+                Console.WriteLine($"API returned error: {node["reason"]}");
+                return false;
+            }
+
+            var offset = (int)node["utc_offset_seconds"]!;
+
+            var current = node["current"];
+
+            if (current is not null) try {
+                this.current = new WeatherData(
+                    WeatherKind.Current,
+                    (long)current["time"]!,
+                    offset,
+                    (float)current["temperature_2m"]!,
+                    (float)current["apparent_temperature"]!,
+                    (ushort)current["relative_humidity_2m"]!,
+                    (ushort)current["weather_code"]!,
+                    (int)-1,
+                    (int)current["is_day"]! != 0,
+                    (float)current["precipitation"]!,
+                    (ushort)100,
+                    (float)current["wind_speed_10m"]!,
+                    (float)current["wind_direction_10m"]!,
+                    ((string)node["current_units"]!["temperature_2m"]!)[1],
+                    (string)node["current_units"]!["precipitation"]!,
+                    (string)node["current_units"]!["wind_speed_10m"]!
+                );
+            } catch (NullReferenceException) {
+                Console.WriteLine($"Failed to parse api the current weather section of the api response!");
+            }
+
+
+            JsonNode minutely = node["minutely_15"]!;
+            if (minutely is not null) try {
+                    int count = minutely["time"]!.AsArray().Count();
+
+                    var data = new List<WeatherData>(capacity: count);
+                    for (int i = 0; i < count; i++) {
+                        data.Add(new WeatherData(
+                            WeatherKind.Minutely,
+                            (long)minutely["time"]![i]!,
+                            offset,
+                            (float)minutely["temperature_2m"]![i]!,
+                            (float)minutely["apparent_temperature"]![i]!,
+                            (ushort)minutely["relative_humidity_2m"]![i]!,
+                            (ushort)minutely["weather_code"]![i]!,
+                            (int)minutely["visibility"]![i]!,
+                            (int)minutely["is_day"]![i]! != 0,
+                            (float)minutely["precipitation"]![i]!,
+                            (ushort)minutely["precipitation_probability"]![i]!,
+                            (float)minutely["wind_speed_10m"]!,
+                            (float)minutely["wind_direction_10m"]!,
+                            ((string)node["minutely_15_units"]!["temperature_2m"]!)[1],
+                            (string)node["minutely_15_units"]!["precipitation"]!,
+                            (string)node["minutely_15_units"]!["wind_speed_10m"]!
+                        ));
+                    }
+
+                    this.minutely = data;
+                } catch (NullReferenceException) {
+                    Console.WriteLine($"Failed to parse api the minutely weather section of the api response!");
+                }
+
+
+            return true;
+        }
+
+        JsonNode? MakeMeteoCall(
             List<String>? current = null,
             List<String>? daily = null,
             ushort forecast_days = 0,
@@ -219,7 +233,7 @@ namespace weather_cli {
             if ((int)response.StatusCode == 418) {
                 Console.WriteLine("The server was unable to brew coffe as it's a teapot. Try again later");
             } else if (response.StatusCode != System.Net.HttpStatusCode.OK) {
-                Console.WriteLine($"Failed to make api request: api.open-meteo.com returned ${(int)response.StatusCode}: ${response.StatusCode.ToString()}");
+                Console.WriteLine($"Failed to make api request: api.open-meteo.com returned {(int)response.StatusCode}: {response.StatusCode.ToString()}");
                 return null;
             }
 
