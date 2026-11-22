@@ -75,6 +75,8 @@ namespace weather_cli {
             //  Execute it
             bool should_exit = false;
             while (!should_exit) {
+                Console.WriteLine($"\n W: {Console.WindowWidth} H: {Console.WindowHeight}");
+
                 Console.Write(">");
                 string user_in = Console.ReadLine() ?? "";
                 Arguments args;

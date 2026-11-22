@@ -19,13 +19,11 @@ namespace weather_cli {
             else return "N";
         }
 
-        public static string FormatIso8601(DateTimeOffset dto)
-        {
-            string format = dto.Offset == TimeSpan.Zero
-                ? "yyyy-MM-ddTHH:mm:ss.fffZ"
-                : "yyyy-MM-ddTHH:mm:ss.fffzzz";
-
-            return dto.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+        public static string FormatIso8601(DateTimeOffset dto) {
+            return dto.ToString(
+                "yyyy-MM-ddTHH:mm",
+                System.Globalization.CultureInfo.InvariantCulture
+            );
         }
 
     }
@@ -41,7 +39,7 @@ namespace weather_cli {
 
         public readonly ushort humidity;
         public readonly ushort wmo_code;
-        public readonly int visibility;
+        public readonly float visibility;
         public readonly bool is_day;
 
         public readonly ushort precipitation_prob;
@@ -55,20 +53,31 @@ namespace weather_cli {
         public readonly DateTimeOffset? sunrise = null;
         public readonly DateTimeOffset? sunset = null;
 
-        public string Format() {
+        public List<string> Format() {
             switch (this.kind) {
                 case WeatherKind.Current:
-                    String[] icon = GetWmoSymbol();
-                    return String.Join('\n', [
+                    if (Console.WindowWidth >= 55) {
+                        String[] icon = GetWmoSymbol();
+                        return [
+                            $"Current weather ({time.Hour}:{time.Minute})",
+                            $"{icon[0]}\t{GetWmoString()},",
+                            $"{icon[1]}\tTemperature: {temp}°{temp_unit} (feels like {atemp}°{temp_unit}),",
+                            $"{icon[2]}\t{humidity}% humidity, {precipitation}{precip_unit} precipitation,",
+                            $"{icon[3]}\tWind {wind_speed}{speed_unit} from {Utils.GetDirectionStringFromAngle(wind_direction)} ({wind_direction}°)",
+                            $"{icon[4]}"
+                        ];
+                    } else return [
                         $"Current weather ({time.Hour}:{time.Minute})",
-                        $"{icon[0]}\t{GetWmoString()},",
-                        $"{icon[1]}\tTemperature: {temp}°{temp_unit} (feels like {atemp}°{temp_unit}),",
-                        $"{icon[2]}\t{humidity}% humidity, {precipitation}{precip_unit} precipitation,",
-                        $"{icon[3]}\tWind {wind_speed}{speed_unit} from {Utils.GetDirectionStringFromAngle(wind_direction)} ({wind_direction}°)",
-                        $"{icon[4]}"
-                    ]);
+                        $"\t{GetWmoString()},",
+                        $"\tTemperature: {temp}°{temp_unit}\n\t(feels like {atemp}°{temp_unit}),",
+                        $"\t{humidity}% humidity\n\t{precipitation}{precip_unit} precipitation,",
+                        $"\tWind {wind_speed}{speed_unit}\n\tfrom {Utils.GetDirectionStringFromAngle(wind_direction)} ({wind_direction}°)",
+                        $""
+                    ];
+                case WeatherKind.Minutely:
+
                 default:
-                    return "NOT IMPLEMENTED!";
+                    return ["NOT IMPLEMENTED!"];
             }
         }
 
@@ -80,7 +89,7 @@ namespace weather_cli {
             float atemp,
             ushort humidity,
             ushort wmo_code,
-            int visibility,
+            float visibility,
             bool is_day,
             float precipitation,
             ushort precipitation_prob,
@@ -124,7 +133,7 @@ namespace weather_cli {
             float atemp,
             ushort humidity,
             ushort wmo_code,
-            int visibility,
+            float visibility,
             bool is_day,
             float precipitation,
             ushort precipitation_prob,
