@@ -110,7 +110,14 @@ namespace weather_cli {
                 return;
             }
 
-            Console.WriteLine(this.current!.Format());
+            Console.WriteLine(String.Join('\n', this.current!.Format()));
+
+            List<string> minutely_fmt = [];
+            foreach(var current_minutely in this.minutely!) {
+                minutely_fmt = current_minutely.Format(minutely_fmt);
+            }
+
+            Console.WriteLine(String.Join('\n', minutely_fmt));
         }
 
         bool ParseCall(in JsonNode node) {

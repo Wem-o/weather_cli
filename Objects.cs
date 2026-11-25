@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace weather_cli {
     /// Represents what kind of weather a WeatherData object represents
     enum WeatherKind {
@@ -26,6 +28,12 @@ namespace weather_cli {
             );
         }
 
+        /// Removes ansii color codes from a string 
+        public static readonly Regex RemoveColoringRegex = 
+            new(@"\x1B\[[0-9;]*[A-Za-z]", RegexOptions.Compiled);
+        // regex is all the circles of hell combined
+
+        public const int MIN_TERM_WIDTH = 55;
     }
 
     /// Represents weather at a given time
@@ -53,18 +61,18 @@ namespace weather_cli {
         public readonly DateTimeOffset? sunrise = null;
         public readonly DateTimeOffset? sunset = null;
 
-        public List<string> Format() {
+        public List<string> Format(List<string>? fmt = null) {
             switch (this.kind) {
                 case WeatherKind.Current:
-                    if (Console.WindowWidth >= 55) {
-                        String[] icon = GetWmoSymbol();
+                    if (Console.WindowWidth >= Utils.MIN_TERM_WIDTH) {
+                        String[] current_icon = GetWmoSymbol();
                         return [
                             $"Current weather ({time.Hour}:{time.Minute})",
-                            $"{icon[0]}\t{GetWmoString()},",
-                            $"{icon[1]}\tTemperature: {temp}°{temp_unit} (feels like {atemp}°{temp_unit}),",
-                            $"{icon[2]}\t{humidity}% humidity, {precipitation}{precip_unit} precipitation,",
-                            $"{icon[3]}\tWind {wind_speed}{speed_unit} from {Utils.GetDirectionStringFromAngle(wind_direction)} ({wind_direction}°)",
-                            $"{icon[4]}"
+                            $"{current_icon[0]}\t{GetWmoString()},",
+                            $"{current_icon[1]}\tTemperature: {temp}°{temp_unit} (feels like {atemp}°{temp_unit}),",
+                            $"{current_icon[2]}\t{humidity}% humidity, {precipitation}{precip_unit} precipitation,",
+                            $"{current_icon[3]}\tWind {wind_speed}{speed_unit} from {Utils.GetDirectionStringFromAngle(wind_direction)} ({wind_direction}°)",
+                            $"{current_icon[4]}"
                         ];
                     } else return [
                         $"Current weather ({time.Hour}:{time.Minute})",
@@ -75,7 +83,67 @@ namespace weather_cli {
                         $""
                     ];
                 case WeatherKind.Minutely:
+                    var end_time = time.AddMinutes(14);
 
+                    // TODO!
+                    if (Console.WindowWidth < Utils.MIN_TERM_WIDTH) {                     
+                        // If the terminal is not wide enough dont use the icon 
+                        return [
+                            $"15 min weather ({time.Hour:D2}:{time.Minute:D2} - {end_time.Hour:D2}:{end_time.Minute:D2})",
+                            $"  {GetWmoString()},",
+                            $"  Temperature: {temp}°{temp_unit}\n  (feels like {atemp}°{temp_unit}),",
+                            $"  {humidity}% humidity\n  {precipitation}{precip_unit} precipitation,",
+                            $"  Wind {wind_speed}{speed_unit}",
+                            $"  from {Utils.GetDirectionStringFromAngle(wind_direction)} ({wind_direction}°)"
+                        ];
+                    }
+
+                    List<string> minutely_fmt;
+                    if (fmt is null) {
+                        minutely_fmt = [];
+                    } else {
+                        minutely_fmt = fmt;
+                    }
+
+                    // Make sure we have 5 empty string (as this amazing language
+                    // doesn't have such 'compilcated' concepts as reserving in lists)
+                    if (minutely_fmt.Count < 5) 
+                        for (int i = 0; i < 6; i++) minutely_fmt.Add("");
+
+                    // The column where we should append to
+                    int min_col = 0;
+                    if (minutely_fmt.Count() > 0) {
+                        foreach(var str in minutely_fmt) {
+                            var strlen = Utils.RemoveColoringRegex.Replace(str, "")
+                                .Length;
+                            
+                            if (strlen > min_col) min_col = strlen; 
+                            
+                        }
+                    }
+                    if (min_col != 0) min_col += 2;
+
+
+                    List<string> tmp;
+                    var icon = GetWmoSymbol();
+                    tmp = [
+                        $"     15 min weather ({time.Hour:D2}:{time.Minute:D2} - {end_time.Hour:D2}:{end_time.Minute:D2})",
+                        $"{icon[0]}  {GetWmoString()},",
+                        $"{icon[1]}  Temperature: {temp}°{temp_unit} (feels like {atemp}°{temp_unit}),",
+                        $"{icon[2]}  {humidity}% humidity, {precipitation}{precip_unit} precipitation,",
+                        $"{icon[3]}  Wind {wind_speed}{speed_unit} from {Utils.GetDirectionStringFromAngle(wind_direction)} ({wind_direction}°)",
+                        $"{icon[4]}"
+                    ];
+                     
+                    
+
+                    for (int i = 0; i < tmp.Count(); i++) {
+                        var strlen = Utils.RemoveColoringRegex.Replace(minutely_fmt[i], "").Length;
+                            
+                        minutely_fmt[i] += $"{new String(' ', min_col - strlen)}{tmp[i]}";
+                    }
+                    
+                    return minutely_fmt;
                 default:
                     return ["NOT IMPLEMENTED!"];
             }
